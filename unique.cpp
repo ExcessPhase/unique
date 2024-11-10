@@ -148,8 +148,8 @@ int main(int argc, char**argv)
 		for (int i = 0; i < sMap.capacity(); ++i)
 			sMap.emplace_back(
 				i & 1
-				? boost::intrusive_ptr<const expression>(unique<expression>::create<integerConstant>(i))
-				: boost::intrusive_ptr<const expression>(unique<expression>::create<realConstant>(i*1.1))
+				? unique<expression>::create<integerConstant>(i)
+				: unique<expression>::create<realConstant>(i*1.1)
 			);
 	};
 		/// the thread objects
