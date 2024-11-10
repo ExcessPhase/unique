@@ -1,0 +1,1 @@
+A template mixin for creating boost::intrusive_ptr to immutable and unique objects!
