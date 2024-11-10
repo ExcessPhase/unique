@@ -86,10 +86,15 @@ struct integerConstant
 
 #include <vector>
 #include <thread>
+#include <iostream>
 
 
 int main(int argc, char**argv)
-{	const auto sCreate = [&](void)
+{	if (argc != 3)
+	{	std::cerr << argv[0] << ": Error: Usage: " << argv[0] << " numberOfObjects numberOfThreads" << std::endl;
+		return 1;
+	}
+	const auto sCreate = [&](void)
 	{	std::vector<boost::intrusive_ptr<const unique<integerConstant> > > sMap;
 		sMap.reserve(std::atoi(argv[1]));
 		for (int i = 0; i < sMap.capacity(); ++i)
