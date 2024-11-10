@@ -143,10 +143,10 @@ int main(int argc, char**argv)
 		/// all the threads are doing the same
 		/// creating a local vector of pointers
 	const auto sCreate = [&](void)
-	{	std::vector<boost::intrusive_ptr<const expression> > sMap;
-		sMap.reserve(std::atoi(argv[1]));
-		for (int i = 0; i < sMap.capacity(); ++i)
-			sMap.emplace_back(
+	{	std::vector<boost::intrusive_ptr<const expression> > sVector;
+		sVector.reserve(std::atoi(argv[1]));
+		for (int i = 0; i < sVector.capacity(); ++i)
+			sVector.emplace_back(
 				i & 1
 				? unique<expression>::create<integerConstant>(i)
 				: unique<expression>::create<realConstant>(i*1.1)
