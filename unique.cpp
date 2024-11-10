@@ -147,7 +147,7 @@ int main(int argc, char**argv)
 		sMap.reserve(std::atoi(argv[1]));
 		for (int i = 0; i < sMap.capacity(); ++i)
 			sMap.emplace_back(
-				i
+				i & 1
 				? boost::intrusive_ptr<const expression>(unique<expression>::create<integerConstant>(i))
 				: boost::intrusive_ptr<const expression>(unique<expression>::create<realConstant>(i*1.1))
 			);
