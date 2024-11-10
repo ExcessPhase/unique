@@ -20,7 +20,7 @@ class NullMutex
 };
 
 template<typename T, bool BTHREADED = true>
-class unique:public T
+class unique
 {	typedef typename std::conditional<
 		BTHREADED,
 		std::atomic<std::size_t>,
@@ -33,37 +33,35 @@ class unique:public T
 	>::type MUTEX;
 	mutable REFCOUNT m_sRefCount;
 	public:
-	template<typename ...ARGS>
-	unique(ARGS&&..._r)
-		:T(std::forward<ARGS>(_r)...),
-		m_sRefCount(std::size_t())
+	unique(void)
+		:m_sRefCount(std::size_t())
 	{
 	}
 	struct compare
-	{	bool operator()(const unique<T, BTHREADED>*const _p0, const unique<T, BTHREADED>*const _p1) const
+	{	bool operator()(const T*const _p0, const T*const _p1) const
 		{	return *_p0 < *_p1;
 		}
 	};
 	private:
-	typedef std::set<const unique<T, BTHREADED>*, compare> SET;
+	typedef std::set<const T*, compare> SET;
 	typedef std::pair<SET, MUTEX> setAndMutex;
 	static setAndMutex&getSet(void)
 	{	static setAndMutex s;
 		return s;
 	}
 	public:
-	template<typename ...ARGS>
-	static boost::intrusive_ptr<const unique<T, BTHREADED> > create(ARGS&&..._r)
-	{	const auto s = boost::intrusive_ptr<const unique<T, BTHREADED> >(new unique<T, BTHREADED>(std::forward<ARGS>(_r)...));
+	template<typename DERIVED, typename ...ARGS>
+	static boost::intrusive_ptr<const T> create(ARGS&&..._r)
+	{	const auto s = boost::intrusive_ptr<const T>(new DERIVED(std::forward<ARGS>(_r)...));
 		std::lock_guard<MUTEX> sLock(getSet().second);
 		return *getSet().first.insert(s.get()).first;
 	}
 	private:
-	friend void intrusive_ptr_add_ref(const unique<T, BTHREADED>* const _p) noexcept
+	friend void intrusive_ptr_add_ref(const T* const _p) noexcept
 	{	std::lock_guard<MUTEX> sLock(getSet().second);
 		++_p->m_sRefCount;
 	}
-	friend void intrusive_ptr_release(const unique<T, BTHREADED>* const _p) noexcept
+	friend void intrusive_ptr_release(const T* const _p) noexcept
 	{	std::optional<std::lock_guard<MUTEX> > sLock(getSet().second);
 		if (!--_p->m_sRefCount)
 		{	getSet().first.erase(_p);
@@ -73,16 +71,52 @@ class unique:public T
 	}
 };
 
-struct integerConstant
+#include <typeinfo>
+
+
+struct expression:unique<expression>
+{	virtual ~expression(void) = default;
+	virtual bool operator<(const expression&_r) const
+	{	if (typeid(*this).before(typeid(_r)))
+			return true;
+		else
+		//if (typeid(_r).before(typeid(*this)))
+			return false;
+	}
+};
+struct integerConstant:expression
 {	const int m_i;
 	integerConstant(const int _i)
 		:m_i(_i)
 	{
 	}
-	bool operator<(const integerConstant&_r) const
-	{	return m_i < _r.m_i;
+	bool operator<(const expression&_r) const override
+	{	if (this->expression::operator<(_r))
+			return true;
+		else
+		if (_r.expression::operator<(*this))
+			return false;
+		else
+			return m_i < static_cast<const integerConstant&>(_r).m_i;
 	}
 };
+struct realConstant:expression
+{	const double m_d;
+	realConstant(const double _d)
+		:m_d(_d)
+	{
+	}
+	bool operator<(const expression&_r) const override
+	{	if (this->expression::operator<(_r))
+			return true;
+		else
+		if (_r.expression::operator<(*this))
+			return false;
+		else
+			return m_d < static_cast<const realConstant&>(_r).m_d;
+	}
+};
+
 
 #include <vector>
 #include <thread>
@@ -95,10 +129,14 @@ int main(int argc, char**argv)
 		return 1;
 	}
 	const auto sCreate = [&](void)
-	{	std::vector<boost::intrusive_ptr<const unique<integerConstant> > > sMap;
+	{	std::vector<boost::intrusive_ptr<const expression> > sMap;
 		sMap.reserve(std::atoi(argv[1]));
 		for (int i = 0; i < sMap.capacity(); ++i)
-			sMap.emplace_back(unique<integerConstant>::create(i));
+			sMap.emplace_back(
+				i
+				? boost::intrusive_ptr<const expression>(unique<expression>::create<integerConstant>(i))
+				: boost::intrusive_ptr<const expression>(unique<expression>::create<realConstant>(i*1.1))
+			);
 	};
 	std::vector<std::thread> sThreads;
 	sThreads.reserve(std::size_t(std::atoi(argv[2])));
