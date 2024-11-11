@@ -27,15 +27,10 @@ template<typename T, bool BTHREADED = true>
 class unique
 {	typedef typename std::conditional<
 		BTHREADED,
-		std::atomic<std::size_t>,
-		std::size_t
-	>::type REFCOUNT;
-	typedef typename std::conditional<
-		BTHREADED,
 		std::recursive_mutex,
 		NullMutex
 	>::type MUTEX;
-	mutable REFCOUNT m_sRefCount;
+	mutable std::size_t m_sRefCount;
 	public:
 	unique(void)
 		:m_sRefCount(std::size_t())
