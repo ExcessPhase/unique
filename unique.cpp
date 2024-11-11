@@ -22,7 +22,7 @@ class NullMutex
 
 	/// the template class to implement the BASE class
 	/// look for example usage below
-	/// default is multithreaded using std::atomic and std::recursive_mutex
+	/// default is multithreaded using std::recursive_mutex
 template<typename T, bool BTHREADED = true>
 class unique
 {	typedef typename std::conditional<
@@ -30,6 +30,7 @@ class unique
 		std::recursive_mutex,
 		NullMutex
 	>::type MUTEX;
+		/// does not need to be std::atomic as protected by a mutex
 	mutable std::size_t m_sRefCount;
 	public:
 	unique(void)
@@ -82,11 +83,7 @@ struct expression:unique<expression>
 		/// for the set of pointers
 		/// sorting only by typeinfo
 	virtual bool operator<(const expression&_r) const
-	{	if (typeid(*this).before(typeid(_r)))
-			return true;
-		else
-		//if (typeid(_r).before(typeid(*this)))
-			return false;
+	{	return typeid(*this).before(typeid(_r));
 	}
 };
 	/// one example derived expression
