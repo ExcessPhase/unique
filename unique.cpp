@@ -27,16 +27,11 @@ template<typename T, bool BTHREADED = true>
 class unique
 {	typedef typename std::conditional<
 		BTHREADED,
-		std::atomic<std::size_t>,
-		std::size_t
-	>::type REFCOUNTED;
-	typedef typename std::conditional<
-		BTHREADED,
 		std::recursive_mutex,
 		NullMutex
 	>::type MUTEX;
 		/// does not need to be std::atomic as protected by a mutex
-	mutable REFCOUNTED m_sRefCount;
+	mutable std::size_t m_sRefCount;
 	public:
 	unique(void)
 		:m_sRefCount(std::size_t())
@@ -50,7 +45,7 @@ class unique
 	};
 	private:
 	typedef std::set<const T*, compare> SET;
-	typedef std::tuple<SET, MUTEX> setAndMutex;
+	typedef std::pair<SET, MUTEX> setAndMutex;
 	static setAndMutex&getSet(void)
 	{	static setAndMutex s;
 		return s;
@@ -60,25 +55,23 @@ class unique
 	template<typename DERIVED, typename ...ARGS>
 	static boost::intrusive_ptr<const T> create(ARGS&&..._r)
 	{	const auto s = boost::intrusive_ptr<const T>(new DERIVED(std::forward<ARGS>(_r)...));
-		std::lock_guard<MUTEX> sLock(std::get<1>(getSet()));
-		return *std::get<0>(getSet()).insert(s.get()).first;
+		std::lock_guard<MUTEX> sLock(getSet().second);
+		return *getSet().first.insert(s.get()).first;
 	}
 	private:
 		/// called by boost::intrusive_ptr<const T>
 	friend void intrusive_ptr_add_ref(const T* const _p) noexcept
-	{	++_p->m_sRefCount;
+	{	std::lock_guard<MUTEX> sLock(getSet().second);
+		++_p->m_sRefCount;
 	}
 		/// called by boost::intrusive_ptr<const T>
 	friend void intrusive_ptr_release(const T* const _p) noexcept
-	{	if (!--_p->m_sRefCount)
-		{	std::optional<std::lock_guard<MUTEX> > sLock(std::get<1>(getSet()));
-			if (!_p->m_sRefCount)
-			{	std::get<0>(getSet()).erase(_p);
-				sLock.reset();
-				delete _p;
-			}
+	{	std::optional<std::lock_guard<MUTEX> > sLock(getSet().second);
+		if (!--_p->m_sRefCount)
+		{	getSet().first.erase(_p);
+			sLock.reset();
+			delete _p;
 		}
-		
 	}
 };
 
