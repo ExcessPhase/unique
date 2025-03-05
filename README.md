@@ -7,4 +7,4 @@
 
 ## Introduction
 
-This code shows how to avoid creating multiple copies of immutable clases in a hierarchy.
+This code shows how to avoid creating multiple copies of identical objects of immutable classes in a hierarchy.
